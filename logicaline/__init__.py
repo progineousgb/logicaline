@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import unicodedata
 from collections.abc import Mapping
 
@@ -23,15 +24,22 @@ class LogicalineError(ValueError):
     """Raised when glyph input is missing required fields or has a bad type."""
 
 
-def logical_lines(glyphs) -> list[str]:
+def logical_lines(glyphs, *, normalize: bool = False) -> list[str]:
     """Group glyphs into lines and return each line in logical reading order.
 
     A glyph is a dict or an object with ``t``, ``x0``, and ``y0``.
     ``x1`` and ``y1`` are optional. Coordinates follow PDF user space:
     x grows to the right and y grows upward. The first string is the
-    top line on the page.
+    top line on the page. With ``normalize=True`` each returned line is
+    passed through Unicode NFKC, which maps Arabic presentation forms
+    (U+FB50 to U+FEFF) such as the lam-alef ligature back to base letters.
     """
     items = _coerce_glyphs(glyphs)
+    if normalize:
+        return [
+            unicodedata.normalize("NFKC", _line_to_logical(_sort_line(line)))
+            for line in _group_lines(items)
+        ]
     lines = _group_lines(items)
     return [_line_to_logical(_sort_line(line)) for line in lines]
 
@@ -95,7 +103,10 @@ def _coerce_one(glyph, index: int) -> dict:
 def _number(value, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise LogicalineError(f"glyph {name} must be a number")
-    return float(value)
+    number = float(value)
+    if not math.isfinite(number):
+        raise LogicalineError(f"glyph {name} must be a finite number")
+    return number
 
 
 def _expand_mixed(glyph: dict) -> list[dict]:
@@ -126,31 +137,45 @@ def _top(glyph: dict) -> float:
     return _span(glyph)[1]
 
 
-def _same_line(line: list[dict], glyph: dict) -> bool:
-    glo, ghi = _span(glyph)
-    llo = min(_span(item)[0] for item in line)
-    lhi = max(_span(item)[1] for item in line)
-    if min(ghi, lhi) - max(glo, llo) > 0:
-        return True
-    heights = [(hi - lo) for item in line for lo, hi in (_span(item),)]
-    heights.append(ghi - glo)
-    positive = [height for height in heights if height > 0]
-    tolerance = max(min(positive) * 0.5, 1.0) if positive else 2.0
-    return any(abs(glyph["y0"] - item["y0"]) <= tolerance for item in line)
+class _Line:
+    __slots__ = ("glyphs", "lo", "hi", "min_height", "seed_y0")
+
+    def __init__(self, glyph: dict) -> None:
+        lo, hi = _span(glyph)
+        self.glyphs = [glyph]
+        self.lo, self.hi = lo, hi
+        self.min_height = hi - lo if hi > lo else None
+        self.seed_y0 = glyph["y0"]
+
+    def accepts(self, glyph: dict) -> bool:
+        glo, ghi = _span(glyph)
+        if min(ghi, self.hi) - max(glo, self.lo) > 0:
+            return True
+        heights = [h for h in (self.min_height, ghi - glo) if h and h > 0]
+        tolerance = max(min(heights) * 0.5, 1.0) if heights else 2.0
+        return abs(glyph["y0"] - self.seed_y0) <= tolerance
+
+    def add(self, glyph: dict) -> None:
+        self.glyphs.append(glyph)
+        lo, hi = _span(glyph)
+        height = hi - lo
+        if height > 0 and (self.min_height is None or height < self.min_height):
+            self.min_height = height
 
 
 def _group_lines(glyphs: list[dict]) -> list[list[dict]]:
     ordered = sorted(glyphs, key=lambda glyph: (-_top(glyph), glyph["x0"], glyph["_i"]))
-    lines: list[list[dict]] = []
+    lines: list[_Line] = []
     for glyph in ordered:
-        for line in lines:
-            if _same_line(line, glyph):
-                line.append(glyph)
+        for line in reversed(lines):
+            if line.accepts(glyph):
+                line.add(glyph)
                 break
         else:
-            lines.append([glyph])
-    lines.sort(key=lambda line: -max(_top(item) for item in line))
-    return lines
+            lines.append(_Line(glyph))
+    result = [line.glyphs for line in lines]
+    result.sort(key=lambda line: -max(_top(item) for item in line))
+    return result
 
 
 def _sort_line(line: list[dict]) -> list[dict]:
@@ -303,8 +328,7 @@ def _line_to_logical(line: list[dict]) -> str:
 
     parts: list[str] = []
     for role, group in reversed(runs):
-        text = "".join(glyph["t"] for glyph in group)
         if role == "R":
-            text = text[::-1]
-        parts.append(text)
+            group = group[::-1]
+        parts.append("".join(glyph["t"] for glyph in group))
     return "".join(parts)

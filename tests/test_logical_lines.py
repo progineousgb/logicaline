@@ -269,3 +269,49 @@ class LogicalLinesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _row(texts, y=100):
+    return [
+        {"t": t, "x0": i * 10, "y0": y, "x1": i * 10 + 8, "y1": y + 12}
+        for i, t in enumerate(texts)
+    ]
+
+
+class AuditRegressionTests(unittest.TestCase):
+    def test_multi_char_arabic_glyph_keeps_mark_after_base(self):
+        # Visual order: TEH on the left, BEH with FATHA on the right.
+        self.assertEqual(logical_lines(_row(["ت", "بَ"])), ["بَت"])
+
+    def test_decomposed_lam_alef_glyph_is_not_reversed(self):
+        self.assertEqual(logical_lines(_row(["س", "لا"])), ["لاس"])
+
+    def test_normalize_maps_presentation_forms(self):
+        lines = logical_lines(_row(["\uFEFB", "\uFEB3"]), normalize=True)
+        self.assertEqual(lines, ["سلا"])
+
+    def test_non_finite_coordinates_rejected(self):
+        for bad in (float("nan"), float("inf")):
+            with self.assertRaises(LogicalineError):
+                logical_lines([{"t": "a", "x0": bad, "y0": 0}])
+
+    def test_empty_input(self):
+        self.assertEqual(logical_lines([]), [])
+
+    def test_staircase_does_not_chain_into_one_line(self):
+        glyphs = [
+            {"t": "س", "x0": i, "y0": i * 0.6, "y1": i * 0.6 + 1}
+            for i in range(300)
+        ]
+        self.assertGreater(len(logical_lines(glyphs)), 1)
+
+    def test_large_input_is_fast(self):
+        import time
+
+        glyphs = []
+        for row in range(200):
+            glyphs += _row(list("ددع 5161 " * 5), y=row * 20)
+        start = time.perf_counter()
+        lines = logical_lines(glyphs)
+        self.assertEqual(len(lines), 200)
+        self.assertLess(time.perf_counter() - start, 2.0)
