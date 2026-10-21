@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "logicaline"
-version = "0.1.0"
+version = "0.1.1"
 description = "Restore logical reading order for Arabic text extracted from PDFs."
 readme = "README.md"
 requires-python = ">=3.11"

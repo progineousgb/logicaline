@@ -107,10 +107,9 @@ def _logical_runs(text):
             if roles[index] != "N":
                 continue
             side = _paren_side(ch)
-            if side == "open" and _number_beside(chars, roles, index + 1, 1):
-                roles[index] = "L"
-                changed = True
-            elif side == "close" and _number_beside(chars, roles, index - 1, -1):
+            opens = side == "open" and _number_beside(chars, roles, index + 1, 1)
+            closes = side == "close" and _number_beside(chars, roles, index - 1, -1)
+            if opens or closes:
                 roles[index] = "L"
                 changed = True
     embedding = "R" if any(role == "R" for role in roles) else "L"

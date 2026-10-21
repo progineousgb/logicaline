@@ -7,7 +7,7 @@ import unicodedata
 from collections.abc import Mapping
 
 __all__ = ["LogicalineError", "logical_lines"]
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 _OPEN_PARENS = frozenset({"(", "\uFD3E"})
 _CLOSE_PARENS = frozenset({")", "\uFD3F"})
@@ -138,7 +138,7 @@ def _top(glyph: dict) -> float:
 
 
 class _Line:
-    __slots__ = ("glyphs", "lo", "hi", "min_height", "seed_y0")
+    __slots__ = ("glyphs", "hi", "lo", "min_height", "seed_y0")
 
     def __init__(self, glyph: dict) -> None:
         lo, hi = _span(glyph)
@@ -186,9 +186,7 @@ def _is_digit(ch: str) -> bool:
     code = ord(ch)
     if "0" <= ch <= "9":
         return True
-    if 0x0660 <= code <= 0x0669 or 0x06F0 <= code <= 0x06F9:
-        return True
-    return False
+    return 0x0660 <= code <= 0x0669 or 0x06F0 <= code <= 0x06F9
 
 
 def _is_latin_letter(ch: str) -> bool:
@@ -275,10 +273,9 @@ def _attach_parentheses(line: list[dict], roles: list[str]) -> None:
             if roles[index] != "N":
                 continue
             side = _paren_side(glyph["t"])
-            if side == "open" and _number_beside(line, roles, index + 1, 1):
-                roles[index] = "L"
-                changed = True
-            elif side == "close" and _number_beside(line, roles, index - 1, -1):
+            opens = side == "open" and _number_beside(line, roles, index + 1, 1)
+            closes = side == "close" and _number_beside(line, roles, index - 1, -1)
+            if opens or closes:
                 roles[index] = "L"
                 changed = True
 
