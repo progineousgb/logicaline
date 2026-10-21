@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logicaline"
+version = "0.1.0"
+description = "Restore logical reading order for Arabic text extracted from PDFs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Pro Gineous"}]
+
+[tool.setuptools]
+packages = ["logicaline"]
