@@ -18,6 +18,28 @@ pip install "git+https://github.com/progineousgb/logicaline.git"
 
 Requires Python 3.11 or newer. The library has no third-party dependencies.
 
+### Linux and macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install "git+https://github.com/progineousgb/logicaline.git"
+```
+
+### Windows (PowerShell)
+
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install "git+https://github.com/progineousgb/logicaline.git"
+```
+
+Git must be installed and on your PATH for these commands to work.
+
+### Running the tests
+
+From a clone of the repository, run `python -m unittest` on any platform.
+
 ## Example
 
 The strings below are visual left-to-right glyph order. Arabic runs are reversed. The numbers 5161, 1444, 18, and 2023 are already in logical digit order.
@@ -54,6 +76,8 @@ lines = logical_lines([
 
 `lines` is a `list[str]`. A glyph may be a dict or an object with attributes `t`, `x0`, `y0`, `x1`, and `y1`. `x1` and `y1` are optional. Every glyph needs `t`, `x0`, and `y0`. Invalid input raises `LogicalineError` with an English message.
 
+Pass `normalize=True` to run each returned line through Unicode NFKC. This maps Arabic presentation forms (U+FB50 to U+FEFF), such as the lam-alef ligature, back to base letters, which is usually what you want for search or storage.
+
 Coordinates follow PDF user space: `x` increases to the right and `y` increases upward. Lines are ordered from the top of the page downward. On each line, increasing `x0` is visual left-to-right order.
 
 Glyphs share a line when their vertical ranges overlap, or when their `y0` values are close. Each glyph is classified as Arabic (letters and presentation forms, including a lam-alef ligature), left to right (Western digits, Arabic-Indic digits, extended Arabic-Indic digits, and Latin letters), or neutral (spaces and punctuation). Neutrals between two Arabic runs join the Arabic run. Neutrals between two left-to-right runs join that run. Parentheses around a number stay on that number.
@@ -66,3 +90,4 @@ If the line contains Arabic, runs are emitted from right to left. Characters are
 - It does not reshape Arabic. Shaping is the extractor's job. Pass a lam-alef ligature through as that glyph.
 - Multi-column pages are not supported. Glyphs that share a vertical band become one line, so columns on that band are merged.
 - Edge punctuation can still be ambiguous. Parentheses around a number stay with that number. Other mirrored brackets, and neutrals sitting on the boundary between Arabic and a number, can still land on either side.
+- Mirrored brackets can come back reversed. Right-to-left renderers flip brackets when they draw Arabic text, so the PDF may store a `(` where the reader sees a `)`. logicaline does not flip them back, so brackets inside Arabic text may appear the wrong way around.
