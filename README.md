@@ -42,7 +42,7 @@ From a clone of the repository, run `python -m unittest` on any platform.
 
 ## Example
 
-The strings below are visual left-to-right glyph order. Arabic runs are reversed. The numbers 5161, 1444, 18, and 2023 are already in logical digit order.
+Arabic is written as `\uXXXX` escapes; `ascii()` prints the result the same way. The strings below are visual left-to-right glyph order. Arabic runs are reversed. The numbers 5161, 1444, 18, and 2023 are already in logical digit order.
 
 ```python
 from logicaline import logical_lines
@@ -55,13 +55,13 @@ def glyphs_ltr(text, y):
     ]
 
 
-glyphs = glyphs_ltr("5161 ددع - يسيئرلا مسقلا", 200)
-glyphs += glyphs_ltr("2023) رياني 1444 (18 ةرخآلا ىدامج 2", 100)
-print(logical_lines(glyphs))
+glyphs = glyphs_ltr("5161 \u062f\u062f\u0639 - \u064a\u0633\u064a\u0626\u0631\u0644\u0627 \u0645\u0633\u0642\u0644\u0627", 200)
+glyphs += glyphs_ltr("2023) \u0631\u064a\u0627\u0646\u064a 1444 (18 \u0629\u0631\u062e\u0622\u0644\u0627 \u0649\u062f\u0627\u0645\u062c 2", 100)
+print(ascii(logical_lines(glyphs)))
 ```
 
 ```text
-['القسم الرئيسي - عدد 5161', '2 جمادى الآخرة 1444 (18 يناير 2023)']
+['\u0627\u0644\u0642\u0633\u0645 \u0627\u0644\u0631\u0626\u064a\u0633\u064a - \u0639\u062f\u062f 5161', '2 \u062c\u0645\u0627\u062f\u0649 \u0627\u0644\u0622\u062e\u0631\u0629 1444 (18 \u064a\u0646\u0627\u064a\u0631 2023)']
 ```
 
 ## API
